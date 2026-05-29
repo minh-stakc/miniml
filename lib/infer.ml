@@ -20,6 +20,21 @@ open Types
 exception Type_error of Span.t * string
 exception Occurs_check of Span.t * string
 
+(* Non-fatal diagnostics (non-exhaustive / redundant matches) accumulated during
+   inference and surfaced by the driver/REPL. *)
+type warning =
+  { wspan : Span.t
+  ; wmsg : string
+  }
+
+let warnings : warning list ref = ref []
+
+let add_warning (wspan : Span.t) (wmsg : string) =
+  warnings := { wspan; wmsg } :: !warnings
+;;
+
+let get_warnings () = List.rev !warnings
+
 (* ------------------------------------------------------------------ *)
 (* Levels *)
 
@@ -32,7 +47,8 @@ let leave_level () = decr current_level
 
 let reset () =
   current_level := 0;
-  reset_counter ()
+  reset_counter ();
+  warnings := []
 ;;
 
 (* ------------------------------------------------------------------ *)
@@ -190,6 +206,25 @@ let lambdas (params : string list) (body : Ast.expr) : Ast.expr =
   List.fold_right (fun p acc -> Ast.EFun (p, acc, Ast.span_of_expr body)) params body
 ;;
 
+(* Run the exhaustiveness/redundancy check on a match and record any warnings. *)
+let check_match (denv : denv) (sp : Span.t) (cases : Ast.case list) : unit =
+  let r = Exhaust.check denv cases in
+  if not r.Exhaust.exhaustive
+  then
+    add_warning
+      sp
+      (Printf.sprintf
+         "this pattern matching is not exhaustive; an unmatched value: %s"
+         (match r.Exhaust.witness with
+          | Some w -> Pretty.pat w
+          | None -> "_"));
+  List.iter
+    (fun i ->
+       let c = List.nth cases i in
+       add_warning (Ast.span_of_pat c.Ast.lhs) "this match case is unused (redundant)")
+    r.Exhaust.redundant
+;;
+
 let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
   match e with
   | Ast.ELit (Ast.LInt _, _) -> t_int
@@ -227,8 +262,7 @@ let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
     unify ~span:sp tt (t_list th);
     t_list th
   | Ast.ECtor (c, arg, sp) -> infer_ctor denv env c arg sp
-  | Ast.EMatch (scrut, cases, _sp) ->
-    (* [_sp] becomes the exhaustiveness-check site in v0.3. *)
+  | Ast.EMatch (scrut, cases, sp) ->
     let tscrut = infer denv env scrut in
     let tresult = new_var !current_level in
     List.iter
@@ -241,6 +275,7 @@ let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
          let trhs = infer denv env' case.rhs in
          unify ~span:(Ast.span_of_expr case.rhs) trhs tresult)
       cases;
+    check_match denv sp cases;
     tresult
   | Ast.EBinop (op, a, b, sp) ->
     let ta = infer denv env a

@@ -117,7 +117,7 @@ The internals are documented to teach, not just to describe:
 |-----------|-----|-------|
 | Lexer + parser + AST + pretty-printer | `v0.1` | ✅ done (0 grammar conflicts) |
 | Hindley-Milner type inference | `v0.2` | ✅ done (union-find + levels) |
-| Pattern-match exhaustiveness | `v0.3` | planned |
+| Pattern-match exhaustiveness | `v0.3` | ✅ done (Maranget + witnesses) |
 | Reference evaluator | `v0.4` | planned |
 | Bytecode compiler + stack VM | `v0.5` | planned |
 | Property-tested soundness + CI | `v0.6` | planned |
