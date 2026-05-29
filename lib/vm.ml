@@ -175,6 +175,16 @@ let run (code : code) : Value.t =
          cell := v;
          push VUnit
        | _ -> raise (Type_trap "assignment to a non-reference"))
+    | MKRECORD labels ->
+      let rec take k acc = if k = 0 then acc else take (k - 1) (pop () :: acc) in
+      push (VRecord (List.combine labels (take (List.length labels) [])))
+    | GETFIELD l ->
+      (match pop () with
+       | VRecord fs ->
+         (match List.assoc_opt l fs with
+          | Some v -> push v
+          | None -> raise (Type_trap ("record has no field " ^ l)))
+       | _ -> raise (Type_trap "field access of a non-record"))
     | MATCHFAIL -> raise (Type_trap "match failure (non-exhaustive)")
     | LABEL _ -> () (* removed by the assembler; defensive no-op *)
     | STOP ->

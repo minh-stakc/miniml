@@ -32,6 +32,10 @@ and typ =
   | TArrow of typ * typ
   | TTuple of typ list
   | TCon of string * typ list (* [int] = TCon("int",[]); ['a list] = TCon("list",[a]) *)
+  | TRecord of typ (* a record over a row, e.g. { x : int; .. } *)
+  | TRowEmpty (* the closed/empty row tail *)
+  | TRowExtend of
+      string * typ * typ (* field [label : field_type] then the rest of the row *)
 
 (** A type scheme [∀ qvars. body]: [qvars] are the ids of the generalized
     (universally quantified) variables appearing in [body]. A monotype is the

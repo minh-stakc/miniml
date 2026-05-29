@@ -145,6 +145,9 @@ and compile_value (cenv : cenv) (e : expr) : instr list =
   | ERef (e, _) -> cv e @ [ MKREF ]
   | EDeref (e, _) -> cv e @ [ DEREF ]
   | EAssign (e1, e2, _) -> cv e1 @ cv e2 @ [ ASSIGN ]
+  | ERecord (fields, _) ->
+    List.concat_map (fun (_, e) -> cv e) fields @ [ MKRECORD (List.map fst fields) ]
+  | EField (e, l, _) -> cv e @ [ GETFIELD l ]
   | (EApp _ | EIf _ | ELet _ | EMatch _ | ESeq _) as e -> compile cenv ~tail:false e
 
 and compile_let_nonrec (cenv : cenv) ~tail (bs : binding list) (body : expr) : instr list =

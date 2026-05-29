@@ -77,6 +77,11 @@ let rec occurs_adjust (id : int) (lvl : level) (t : typ) : unit =
     occurs_adjust id lvl a;
     occurs_adjust id lvl b
   | TTuple ts | TCon (_, ts) -> List.iter (occurs_adjust id lvl) ts
+  | TRecord r -> occurs_adjust id lvl r
+  | TRowExtend (_, ft, rest) ->
+    occurs_adjust id lvl ft;
+    occurs_adjust id lvl rest
+  | TRowEmpty -> ()
 ;;
 
 let rec unify_ (t1 : typ) (t2 : typ) : unit =
@@ -96,7 +101,35 @@ let rec unify_ (t1 : typ) (t2 : typ) : unit =
     | TTuple xs, TTuple ys when List.length xs = List.length ys -> List.iter2 unify_ xs ys
     | TCon (n1, a1), TCon (n2, a2) when n1 = n2 && List.length a1 = List.length a2 ->
       List.iter2 unify_ a1 a2
+    | TRecord r1, TRecord r2 -> unify_ r1 r2
+    | TRowEmpty, TRowEmpty -> ()
+    | TRowExtend (l, ft, rest), _ ->
+      (* expose label [l] in the other row (extending its tail variable if
+         needed), unify the field types, then unify the remaining rows *)
+      let rest2 = rewrite_row t2 l ft in
+      unify_ rest rest2
+    | _, TRowExtend (l, ft, rest) ->
+      let rest1 = rewrite_row t1 l ft in
+      unify_ rest1 rest
     | _ -> raise Unify_internal)
+
+(* Rewrite [row] so that field [l : field_t] is at the front, returning the
+   remaining row. If [l] is absent and the tail is a row variable, extend it
+   with [l]; if the tail is closed, the field is genuinely absent — fail. *)
+and rewrite_row (row : typ) (l : string) (field_t : typ) : typ =
+  match repr row with
+  | TRowExtend (l', ft', rest) when String.equal l l' ->
+    unify_ field_t ft';
+    rest
+  | TRowExtend (l', ft', rest) -> TRowExtend (l', ft', rewrite_row rest l field_t)
+  | TVar ({ contents = Unbound (id, lvl) } as r) ->
+    let rest = new_var lvl in
+    let ext = TRowExtend (l, field_t, rest) in
+    occurs_adjust id lvl ext;
+    r := Link ext;
+    rest
+  | TVar { contents = Link _ } -> assert false
+  | _ -> raise Unify_internal (* closed row missing field [l], or not a row *)
 ;;
 
 (* Public entry point: attaches a source span to whatever goes wrong. *)
@@ -135,6 +168,11 @@ let generalize (t : typ) : scheme =
       go a;
       go b
     | TTuple ts | TCon (_, ts) -> List.iter go ts
+    | TRecord r -> go r
+    | TRowExtend (_, ft, rest) ->
+      go ft;
+      go rest
+    | TRowEmpty -> ()
   in
   go t;
   { qvars = List.rev !acc; body = t }
@@ -157,6 +195,11 @@ let rec demote (t : typ) : unit =
     demote a;
     demote b
   | TTuple ts | TCon (_, ts) -> List.iter demote ts
+  | TRecord r -> demote r
+  | TRowExtend (_, ft, rest) ->
+    demote ft;
+    demote rest
+  | TRowEmpty -> ()
 ;;
 
 (* The first element that occurs more than once (for pattern-linearity checks). *)
@@ -184,6 +227,9 @@ let instantiate (s : scheme) : typ =
       | TArrow (a, b) -> TArrow (go a, go b)
       | TTuple ts -> TTuple (List.map go ts)
       | TCon (n, ts) -> TCon (n, List.map go ts)
+      | TRecord r -> TRecord (go r)
+      | TRowExtend (l, ft, rest) -> TRowExtend (l, go ft, go rest)
+      | TRowEmpty -> TRowEmpty
     in
     go s.body
 ;;
@@ -201,6 +247,7 @@ let rec is_value (e : Ast.expr) : bool =
   | Ast.ECtor (_, Some e, _) -> is_value e
   | Ast.ETuple (es, _) -> List.for_all is_value es
   | Ast.ECons (h, t, _) -> is_value h && is_value t
+  | Ast.ERecord (fields, _) -> List.for_all (fun (_, e) -> is_value e) fields
   | _ -> false
 ;;
 
@@ -348,6 +395,23 @@ let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
     let t2 = infer denv env e2 in
     unify ~span:sp t1 (t_ref t2);
     t_unit
+  | Ast.ERecord (fields, _) ->
+    (* a record literal has a closed row of exactly its fields *)
+    let row =
+      List.fold_right
+        (fun (l, e) rest -> TRowExtend (l, infer denv env e, rest))
+        fields
+        TRowEmpty
+    in
+    TRecord row
+  | Ast.EField (e, l, sp) ->
+    (* [e] must be a record with (at least) field [l]; the row tail is open, so
+       field access is row-polymorphic: { l : 'a; .. } -> 'a *)
+    let te = infer denv env e in
+    let field_ty = new_var !current_level in
+    let rest_row = new_var !current_level in
+    unify ~span:sp te (TRecord (TRowExtend (l, field_ty, rest_row)));
+    field_ty
 
 and infer_ctor denv env (c : string) (arg : Ast.expr option) (sp : Span.t) : typ =
   match Hashtbl.find_opt denv.ctors c with

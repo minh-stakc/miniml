@@ -18,6 +18,7 @@ type t =
   | VClosEval of eval_closure (* a closure produced by the tree-walking evaluator *)
   | VClosVM of vm_closure (* a closure produced by the bytecode VM (v0.5) *)
   | VRef of t ref (* a mutable reference cell (v1.0) *)
+  | VRecord of (string * t) list (* a record value: field name -> value (v1.1) *)
 
 and eval_closure =
   { param : string
@@ -47,6 +48,15 @@ let rec equal (a : t) (b : t) : bool =
       | Some x, Some y -> equal x y
       | _ -> false)
   | VRef a, VRef b -> equal !a !b (* structural, like OCaml's [=] on refs *)
+  | VRecord fa, VRecord fb ->
+    (* order-independent: same labels with equal values *)
+    List.length fa = List.length fb
+    && List.for_all
+         (fun (l, v) ->
+            match List.assoc_opt l fb with
+            | Some v' -> equal v v'
+            | None -> false)
+         fa
   | _ -> false
 ;;
 
@@ -61,6 +71,11 @@ let rec to_string (v : t) : string =
   | VData (c, Some v) -> c ^ " " ^ to_string_atom v
   | VClosEval _ | VClosVM _ -> "<fun>"
   | VRef cell -> "ref " ^ to_string_atom !cell
+  | VRecord [] -> "{}"
+  | VRecord fields ->
+    "{ "
+    ^ String.concat "; " (List.map (fun (l, v) -> l ^ " = " ^ to_string v) fields)
+    ^ " }"
 
 and to_string_atom (v : t) : string =
   match v with

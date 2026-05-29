@@ -60,6 +60,8 @@ type expr =
   | ERef of expr * Span.t (* [ref e] *)
   | EDeref of expr * Span.t (* [!e] *)
   | EAssign of expr * expr * Span.t (* [e1 := e2] *)
+  | ERecord of (string * expr) list * Span.t (* [{ x = e1; y = e2 }] *)
+  | EField of expr * string * Span.t (* [e.x] *)
 
 and binding =
   { name : string
@@ -126,7 +128,9 @@ let span_of_expr : expr -> Span.t = function
   | ESeq (_, _, s)
   | ERef (_, s)
   | EDeref (_, s)
-  | EAssign (_, _, s) -> s
+  | EAssign (_, _, s)
+  | ERecord (_, s)
+  | EField (_, _, s) -> s
 ;;
 
 let string_of_binop : binop -> string = function

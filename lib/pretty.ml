@@ -93,6 +93,13 @@ and expr_prec (e : expr) : int * string =
   | EAssign (a, b, _) -> 1, expr_p 2 a ^ " := " ^ expr_p 1 b
   | ERef (e, _) -> 8, "ref " ^ expr_p 9 e
   | EDeref (e, _) -> 9, "!" ^ expr_p 9 e
+  | ERecord ([], _) -> 9, "{}"
+  | ERecord (fields, _) ->
+    ( 9
+    , "{ "
+      ^ String.concat "; " (List.map (fun (l, e) -> l ^ " = " ^ expr_p 0 e) fields)
+      ^ " }" )
+  | EField (e, l, _) -> 9, expr_p 9 e ^ "." ^ l
 
 and binding_str (b : binding) : string =
   let params = String.concat "" (List.map (fun p -> " " ^ p) b.params) in
@@ -191,6 +198,22 @@ let typ (t : Types.typ) : string =
       let sa = go 1 a in
       let sb = go 0 b in
       paren (prec > 0) (sa ^ " -> " ^ sb)
+    | Types.TRecord row ->
+      let s = render_row row in
+      if String.equal s "" then "{}" else "{ " ^ s ^ " }"
+    | Types.TRowEmpty -> "" (* only meaningful inside a TRecord *)
+    | Types.TRowExtend _ -> render_row (Types.repr t)
+  and render_row (row : Types.typ) : string =
+    match Types.repr row with
+    | Types.TRowEmpty -> ""
+    | Types.TRowExtend (l, ft, rest) ->
+      let head = l ^ " : " ^ go 0 ft in
+      (match Types.repr rest with
+       | Types.TRowEmpty -> head
+       | Types.TRowExtend _ -> head ^ "; " ^ render_row rest
+       | _ -> head ^ "; ..")
+      (* an open row variable in the tail *)
+    | _ -> ".." (* a fully-open row (bare row variable) *)
   in
   go 0 t
 ;;

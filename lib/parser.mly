@@ -52,6 +52,7 @@ let mk_app f x loc =
 %token UNDERSCORE EQUAL
 %token PLUS MINUS STAR SLASH LT LE GT GE NEQ ANDAND OROR
 %token REF BANG COLONEQ
+%token LBRACE RBRACE DOT
 %token EOF
 
 (* Precedence ladder, lowest to highest. [no_pipe] is a pseudo-token used to
@@ -178,14 +179,25 @@ app_expr:
   | e = simple_expr { e }
   | f = app_expr x = simple_expr { mk_app f x $loc }
 
+(* A [simple_expr] is an atom followed by zero or more [.field] accesses.
+   Threading field access through a suffix list (rather than a left-recursive
+   [simple_expr DOT IDENT]) keeps it conflict-free with juxtaposition
+   application: [f r.x] is [f (r.x)], with no shift/reduce ambiguity. *)
 simple_expr:
+  | a = atom fs = list(field_suffix)
+      { List.fold_left (fun e l -> EField (e, l, mkspan $loc)) a fs }
+
+field_suffix:
+  | DOT l = IDENT { l }
+
+atom:
   | i = INT { ELit (LInt i, mkspan $loc) }
   | TRUE { ELit (LBool true, mkspan $loc) }
   | FALSE { ELit (LBool false, mkspan $loc) }
   | x = IDENT { EVar (x, mkspan $loc) }
   | c = UIDENT { ECtor (c, None, mkspan $loc) }
-  | BANG e = simple_expr { EDeref (e, mkspan $loc) }
-  | REF e = simple_expr { ERef (e, mkspan $loc) }
+  | BANG e = atom { EDeref (e, mkspan $loc) } (* binds tighter than [.], so !r.x = (!r).x *)
+  | REF e = atom { ERef (e, mkspan $loc) }
   | LPAREN RPAREN { ELit (LUnit, mkspan $loc) }
   | LPAREN e = expr RPAREN { e }
   | LPAREN e = expr COMMA es = separated_nonempty_list(COMMA, expr) RPAREN
@@ -193,6 +205,12 @@ simple_expr:
   | LPAREN e = expr SEMI s = seq_expr RPAREN { ESeq (e, s, mkspan $loc) }
   | LBRACKET RBRACKET { ENil (mkspan $loc) }
   | LBRACKET es = separated_nonempty_list(SEMI, expr) RBRACKET { mk_list es $loc }
+  | LBRACE RBRACE { ERecord ([], mkspan $loc) }
+  | LBRACE fs = separated_nonempty_list(SEMI, record_field) RBRACE { ERecord (fs, mkspan $loc) }
+
+(* a single [label = value] in a record literal *)
+record_field:
+  | l = IDENT EQUAL e = expr { (l, e) }
 
 (* ------------------------------------------------------------------ *)
 (* match cases. The case list is right-recursive; [%prec no_pipe] on the

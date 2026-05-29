@@ -46,6 +46,8 @@ type instr =
   | MKREF (* pop a value, push a fresh reference cell holding it *)
   | DEREF (* pop a reference, push its contents *)
   | ASSIGN (* pop a value then a reference, store the value, push unit *)
+  | MKRECORD of string list (* pop one value per label, push a record *)
+  | GETFIELD of string (* pop a record, push the named field's value *)
   | MATCHFAIL (* runtime match failure (should be unreachable for exhaustive matches) *)
   | LABEL of int (* pseudo-instruction: a jump target, removed by the assembler *)
   | STOP (* halt; the result is the top of the stack *)

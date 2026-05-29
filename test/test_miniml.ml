@@ -12,5 +12,6 @@ let () =
      @ Test_soundness.suites
      @ Test_driver.suites
      @ Test_refs.suites
-     @ Test_match.suites)
+     @ Test_match.suites
+     @ Test_records.suites)
 ;;

@@ -81,6 +81,14 @@ let rec eval (env : env) (e : expr) : Value.t =
        cell := eval env e2;
        VUnit
      | _ -> raise (Runtime_error "assignment to a non-reference"))
+  | ERecord (fields, _) -> VRecord (List.map (fun (l, e) -> l, eval env e) fields)
+  | EField (e, l, _) ->
+    (match eval env e with
+     | VRecord fs ->
+       (match List.assoc_opt l fs with
+        | Some v -> v
+        | None -> raise (Runtime_error ("record has no field " ^ l)))
+     | _ -> raise (Runtime_error "field access of a non-record"))
 
 and eval_binop (op : binop) (a : Value.t) (b : Value.t) : Value.t =
   let int2 f =
