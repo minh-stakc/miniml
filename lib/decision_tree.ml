@@ -46,13 +46,14 @@ let head_of_pat (p : pat) : head option =
   | PCtor (c, _, _) -> Some (HUser c)
 ;;
 
-(* Sub-patterns exposed by matching a pattern's head constructor. *)
+(* Sub-patterns exposed by matching a pattern's head constructor. Enumerated
+   rather than defaulted, so a new pattern form must be handled here too. *)
 let subpatterns (p : pat) : pat list =
   match p with
   | PCons (h, t, _) -> [ h; t ]
   | PTuple (ps, _) -> ps
   | PCtor (_, Some a, _) -> [ a ]
-  | _ -> []
+  | PCtor (_, None, _) | PWild _ | PVar _ | PLit _ | PNil _ -> []
 ;;
 
 let test_of_head (h : head) : Bytecode.test =
