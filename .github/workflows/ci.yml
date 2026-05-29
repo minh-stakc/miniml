@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        ocaml-compiler: ["5.2.x"]
+        ocaml-compiler: ["5.1.x", "5.2.x"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -29,10 +29,14 @@ jobs:
       - name: Build
         run: opam exec -- dune build @all
 
-      - name: Test (unit + differential + soundness)
+      # `dune test` runs the alcotest/qcheck suites and the cram golden
+      # snapshots. Cram diffs fail the build (CI never auto-promotes), so the
+      # CLI's output stays pinned.
+      - name: Test (unit, differential, property, cram snapshots)
         run: opam exec -- dune test
 
       - name: Check formatting
+        if: matrix.ocaml-compiler == '5.2.x'
         run: |
           opam install -y ocamlformat.0.29.0
           opam exec -- dune build @fmt
