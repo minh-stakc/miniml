@@ -4,5 +4,9 @@
 let () =
   Alcotest.run
     "miniml"
-    (Test_parser.suites @ Test_infer.suites @ Test_exhaust.suites @ Test_eval.suites)
+    (Test_parser.suites
+     @ Test_infer.suites
+     @ Test_exhaust.suites
+     @ Test_eval.suites
+     @ Test_vm.suites)
 ;;

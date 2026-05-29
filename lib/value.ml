@@ -16,11 +16,17 @@ type t =
   | VList of t list
   | VData of string * t option (* constructor name + optional argument *)
   | VClosEval of eval_closure (* a closure produced by the tree-walking evaluator *)
+  | VClosVM of vm_closure (* a closure produced by the bytecode VM (v0.5) *)
 
 and eval_closure =
   { param : string
   ; cbody : Ast.expr (* [cbody] not [body], to avoid clashing with [Ast.binding.body] *)
   ; mutable eenv : (string * t) list (* mutable for let-rec knot-tying *)
+  }
+
+and vm_closure =
+  { code : int (* entry program-counter into the bytecode *)
+  ; mutable venv : t list (* captured environment; mutable for let-rec knot-tying *)
   }
 
 (** Structural equality. Closures are opaque (never equal): differential tests
@@ -51,7 +57,7 @@ let rec to_string (v : t) : string =
   | VList vs -> "[" ^ String.concat "; " (List.map to_string vs) ^ "]"
   | VData (c, None) -> c
   | VData (c, Some v) -> c ^ " " ^ to_string_atom v
-  | VClosEval _ -> "<fun>"
+  | VClosEval _ | VClosVM _ -> "<fun>"
 
 and to_string_atom (v : t) : string =
   match v with

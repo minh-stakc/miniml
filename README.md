@@ -119,7 +119,7 @@ The internals are documented to teach, not just to describe:
 | Hindley-Milner type inference | `v0.2` | ✅ done (union-find + levels) |
 | Pattern-match exhaustiveness | `v0.3` | ✅ done (Maranget + witnesses) |
 | Reference evaluator | `v0.4` | ✅ done (differential-testing oracle) |
-| Bytecode compiler + stack VM | `v0.5` | planned |
+| Bytecode compiler + stack VM | `v0.5` | ✅ done (proper tail calls) |
 | Property-tested soundness + CI | `v0.6` | planned |
 | REPL + error spans + examples | `v0.7` | planned |
 | Mutable refs + value restriction | `v1.0` | planned (optional) |
