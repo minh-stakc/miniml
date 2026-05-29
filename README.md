@@ -139,7 +139,7 @@ Warning: this pattern matching is not exhaustive; an unmatched value: None
 
 miniml> fun x -> x x
 1 | fun x -> x x
-         ^^^
+             ^^^
 cannot construct the infinite type 'a
 
 miniml> 1 + true
