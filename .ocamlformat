@@ -1,0 +1,3 @@
+profile = janestreet
+; A `version = X.Y.Z` line is added once the toolchain pins ocamlformat,
+; so `dune fmt --check` in CI uses the same version as local development.

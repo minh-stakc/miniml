@@ -1,0 +1,9 @@
+# Force LF on all text files so editing from Windows never injects CRLF
+# (which would break ocamllex/menhir tooling or shift source spans).
+* text=auto eol=lf
+
+*.ml  text eol=lf
+*.mli text eol=lf
+*.mll text eol=lf
+*.mly text eol=lf
+*.sh  text eol=lf
