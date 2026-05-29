@@ -6,6 +6,8 @@
 
 (using menhir 2.1)
 
+(cram enable)
+
 (source
  (github minh-stakc/miniml))
 
