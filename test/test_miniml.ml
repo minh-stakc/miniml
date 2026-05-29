@@ -8,5 +8,6 @@ let () =
      @ Test_infer.suites
      @ Test_exhaust.suites
      @ Test_eval.suites
-     @ Test_vm.suites)
+     @ Test_vm.suites
+     @ Test_soundness.suites)
 ;;

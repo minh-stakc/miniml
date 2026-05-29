@@ -120,7 +120,7 @@ The internals are documented to teach, not just to describe:
 | Pattern-match exhaustiveness | `v0.3` | ✅ done (Maranget + witnesses) |
 | Reference evaluator | `v0.4` | ✅ done (differential-testing oracle) |
 | Bytecode compiler + stack VM | `v0.5` | ✅ done (proper tail calls) |
-| Property-tested soundness + CI | `v0.6` | planned |
+| Property-tested soundness + CI | `v0.6` | ✅ done (1000-case qcheck) |
 | REPL + error spans + examples | `v0.7` | planned |
 | Mutable refs + value restriction | `v1.0` | planned (optional) |
 
