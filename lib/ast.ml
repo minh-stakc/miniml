@@ -60,7 +60,8 @@ type expr =
 
 and binding =
   { name : string
-  ; params : string list (* [\[\]] for a plain [let x = e]; non-empty for [let f x y = e] *)
+  ; params :
+      string list (* [\[\]] for a plain [let x = e]; non-empty for [let f x y = e] *)
   ; body : expr
   ; bspan : Span.t
   }
@@ -103,6 +104,7 @@ let span_of_pat : pat -> Span.t = function
   | PCtor (_, _, s)
   | PNil s
   | PCons (_, _, s) -> s
+;;
 
 let span_of_expr : expr -> Span.t = function
   | EVar (_, s)
@@ -119,6 +121,7 @@ let span_of_expr : expr -> Span.t = function
   | EBinop (_, _, _, s)
   | EUnop (_, _, s)
   | ESeq (_, _, s) -> s
+;;
 
 let string_of_binop : binop -> string = function
   | Add -> "+"
@@ -133,7 +136,9 @@ let string_of_binop : binop -> string = function
   | Neq -> "<>"
   | And -> "&&"
   | Or -> "||"
+;;
 
 let string_of_unop : unop -> string = function
   | Neg -> "-"
   | Not -> "not"
+;;

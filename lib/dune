@@ -1,7 +1,8 @@
 (library
  (name miniml))
 
-; ocamllex / menhir stanzas are added in the v0.1 milestone, once lexer.mll
-; and parser.mly exist:
-;   (ocamllex lexer)
-;   (menhir (modules parser) (flags --explain --strict))
+(ocamllex lexer)
+
+(menhir
+ (modules parser)
+ (flags --explain))

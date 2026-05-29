@@ -27,19 +27,17 @@ let pos_of_lexing (p : Lexing.position) : pos =
   ; col = p.Lexing.pos_cnum - p.Lexing.pos_bol
   ; off = p.Lexing.pos_cnum
   }
+;;
 
 (** Build a span from menhir's [$startpos]/[$endpos] (or any pair of lexer
     positions). *)
 let of_lexing (s : Lexing.position) (e : Lexing.position) : t =
   { lo = pos_of_lexing s; hi = pos_of_lexing e }
+;;
 
 let to_string (s : t) : string =
   if s.lo.line = s.hi.line
   then Printf.sprintf "line %d, cols %d-%d" s.lo.line s.lo.col s.hi.col
   else
-    Printf.sprintf
-      "line %d col %d - line %d col %d"
-      s.lo.line
-      s.lo.col
-      s.hi.line
-      s.hi.col
+    Printf.sprintf "line %d col %d - line %d col %d" s.lo.line s.lo.col s.hi.line s.hi.col
+;;

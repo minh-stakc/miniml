@@ -32,6 +32,7 @@ jobs:
       - name: Test (unit + differential + soundness)
         run: opam exec -- dune test
 
-      # Enabled once .ocamlformat pins the toolchain's ocamlformat version:
-      # - name: Check formatting
-      #   run: opam exec -- dune fmt --check
+      - name: Check formatting
+        run: |
+          opam install -y ocamlformat.0.29.0
+          opam exec -- dune build @fmt
