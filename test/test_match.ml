@@ -56,6 +56,51 @@ let corpus_cases =
     corpus
 ;;
 
+(* The number of comparison sites (TEST instructions) [e] compiles to under a
+   given strategy — the cost metric the bench reports. *)
+let count_tests (s : Compile.strategy) (e : Miniml.Ast.expr) : int =
+  Compile.strategy := s;
+  let code = Miniml.Compile.compile_expr e in
+  Compile.strategy := Compile.Decision_tree;
+  Array.fold_left
+    (fun n i ->
+       match i with
+       | Miniml.Bytecode.TEST _ -> n + 1
+       | _ -> n)
+    0
+    code
+;;
+
+(* Guardrail for the "optimizing" claim: the decision tree must never emit more
+   comparison sites than the naive strategy on any case... *)
+let cost_cases =
+  List.map
+    (fun (name, src) ->
+       Alcotest.test_case name `Quick (fun () ->
+         let e = parse_expr src in
+         let naive = count_tests Compile.Naive e in
+         let tree = count_tests Compile.Decision_tree e in
+         Alcotest.(check bool)
+           (Printf.sprintf "decision tree (%d) <= naive (%d) comparison sites" tree naive)
+           true
+           (tree <= naive)))
+    corpus
+;;
+
+(* ...and strictly fewer in total, so the optimization is real, not a no-op. *)
+let cost_total =
+  Alcotest.test_case "strictly fewer comparison sites overall" `Quick (fun () ->
+    let total s =
+      List.fold_left (fun acc (_, src) -> acc + count_tests s (parse_expr src)) 0 corpus
+    in
+    let naive = total Compile.Naive
+    and tree = total Compile.Decision_tree in
+    Alcotest.(check bool)
+      (Printf.sprintf "decision-tree total %d < naive total %d" tree naive)
+      true
+      (tree < naive))
+;;
+
 (* Over generated well-typed programs (which include list matches), all three
    back-ends must agree. *)
 let prop_agree =
@@ -68,6 +113,7 @@ let prop_agree =
 
 let suites =
   [ "match-strategies-corpus", corpus_cases
+  ; "match-strategies-cost", cost_cases @ [ cost_total ]
   ; "match-strategies-property", [ QCheck_alcotest.to_alcotest prop_agree ]
   ]
 ;;
