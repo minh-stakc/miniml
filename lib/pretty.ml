@@ -149,3 +149,47 @@ let item (it : item) : string =
 ;;
 
 let program (p : program) : string = String.concat "\n" (List.map item p)
+
+(* ------------------------------------------------------------------ *)
+(* Inferred types (Types.typ / Types.scheme).
+
+   Variables are renamed to 'a, 'b, ... in order of first appearance, so the
+   printed type is stable and readable regardless of internal variable ids.
+   Type precedence: arrow (lowest) < tuple < application < atom. *)
+
+let typ (t : Types.typ) : string =
+  let names : (int, string) Hashtbl.t = Hashtbl.create 16 in
+  let n = ref 0 in
+  let name_of id =
+    match Hashtbl.find_opt names id with
+    | Some s -> s
+    | None ->
+      let k = !n in
+      incr n;
+      let letter = Char.chr (Char.code 'a' + (k mod 26)) in
+      let suffix = if k < 26 then "" else string_of_int (k / 26) in
+      let s = Printf.sprintf "'%c%s" letter suffix in
+      Hashtbl.add names id s;
+      s
+  in
+  let paren b s = if b then "(" ^ s ^ ")" else s in
+  let rec go prec (t : Types.typ) : string =
+    match Types.repr t with
+    | Types.TVar { contents = Types.Unbound (id, _) } -> name_of id
+    | Types.TVar { contents = Types.Link _ } -> assert false (* repr removed links *)
+    | Types.TCon (name, []) -> name
+    | Types.TCon (name, [ a ]) -> go 2 a ^ " " ^ name
+    | Types.TCon (name, args) ->
+      "(" ^ String.concat ", " (List.map (go 0) args) ^ ") " ^ name
+    | Types.TTuple ts -> paren (prec > 1) (String.concat " * " (List.map (go 2) ts))
+    | Types.TArrow (a, b) ->
+      (* [let]-bind to force left-to-right naming: OCaml evaluates the operands
+         of [^] right-to-left, which would otherwise name the codomain first. *)
+      let sa = go 1 a in
+      let sb = go 0 b in
+      paren (prec > 0) (sa ^ " -> " ^ sb)
+  in
+  go 0 t
+;;
+
+let scheme (s : Types.scheme) : string = typ s.Types.body

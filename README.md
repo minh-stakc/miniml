@@ -116,7 +116,7 @@ The internals are documented to teach, not just to describe:
 | Milestone | Tag | State |
 |-----------|-----|-------|
 | Lexer + parser + AST + pretty-printer | `v0.1` | ✅ done (0 grammar conflicts) |
-| Hindley-Milner type inference | `v0.2` | planned |
+| Hindley-Milner type inference | `v0.2` | ✅ done (union-find + levels) |
 | Pattern-match exhaustiveness | `v0.3` | planned |
 | Reference evaluator | `v0.4` | planned |
 | Bytecode compiler + stack VM | `v0.5` | planned |
