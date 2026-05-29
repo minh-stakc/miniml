@@ -1,4 +1,4 @@
-(lang dune 3.0)
+(lang dune 3.6)
 
 (name miniml)
 
@@ -7,7 +7,7 @@
 (using menhir 2.1)
 
 (source
- (github your-username/miniml))
+ (github minh-stakc/miniml))
 
 (authors "Nathan Hoang")
 

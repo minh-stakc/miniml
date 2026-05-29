@@ -8,11 +8,11 @@ maintainer: ["Nathan Hoang"]
 authors: ["Nathan Hoang"]
 license: "MIT"
 tags: ["compiler" "type-inference" "hindley-milner" "bytecode" "ocaml"]
-homepage: "https://github.com/your-username/miniml"
-bug-reports: "https://github.com/your-username/miniml/issues"
+homepage: "https://github.com/minh-stakc/miniml"
+bug-reports: "https://github.com/minh-stakc/miniml/issues"
 depends: [
   "ocaml" {>= "4.14"}
-  "dune" {>= "3.0"}
+  "dune" {>= "3.6"}
   "menhir" {>= "2.1"}
   "alcotest" {with-test}
   "qcheck" {with-test}
@@ -33,4 +33,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/your-username/miniml.git"
+dev-repo: "git+https://github.com/minh-stakc/miniml.git"
