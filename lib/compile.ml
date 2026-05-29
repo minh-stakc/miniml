@@ -13,12 +13,12 @@
     - {b tail calls}: a [~tail] flag is threaded through; an application in tail
       position compiles to [TAILAPPLY] (no return frame), so tail recursion runs
       in constant frame-stack space.
-    - {b pattern matching} compiles to a decision sequence: for each clause, first
-      a sequence of shape [TEST]s (reading sub-values by [FIELD] paths from the
-      scrutinee, jumping to the next clause on mismatch), then — only once the
-      whole pattern matches — the variable bindings and the clause body. Splitting
-      testing from binding keeps failure handling trivial (a failed test has
-      changed nothing). An optimal decision-tree compiler is future work. *)
+    - {b pattern matching} has two interchangeable strategies (selected by
+      {!strategy}): a naive per-clause decision sequence, and an optimizing
+      Maranget decision tree (the default; see {!Decision_tree} and
+      [docs/09-decision-trees.md]). Both bind variables by pushing a value's
+      [FIELD] path from the scrutinee; the two are differentially tested to agree
+      with each other and the evaluator on every program. *)
 
 open Ast
 open Bytecode
@@ -29,6 +29,15 @@ let fresh_label () =
   incr label_counter;
   !label_counter
 ;;
+
+(* Pattern-match compilation strategy. The optimizing decision-tree compiler is
+   the default; the naive per-clause sequence is retained so the two can be
+   differentially tested to agree on every program. *)
+type strategy =
+  | Naive
+  | Decision_tree
+
+let strategy = ref Decision_tree
 
 (* compile-time environment: names, innermost first; ACCESS index = position. *)
 type cenv = string list
@@ -173,9 +182,27 @@ and compile_let_rec (cenv : cenv) ~tail (bs : binding list) (body : expr) : inst
   @ if tail then [] else [ ENDLET n ]
 
 and compile_match (cenv : cenv) ~tail (scrut : expr) (cases : case list) : instr list =
+  (* Shared frame: evaluate the scrutinee into a local slot (index 0 in cenv_m),
+     run the strategy-specific matching code, then drop the scrutinee. Each
+     clause body jumps to [l_end] (non-tail) or returns (tail); an unmatched
+     value reaches MATCHFAIL. *)
   let l_end = fresh_label () in
-  let l_fail = fresh_label () in
   let cenv_m = "$scrut" :: cenv in
+  let middle =
+    match !strategy with
+    | Naive -> naive_match cenv_m ~tail cases l_end
+    | Decision_tree -> tree_match cenv_m ~tail cases l_end
+  in
+  compile cenv ~tail:false scrut
+  @ [ LET ]
+  @ middle
+  @ [ LABEL l_end ]
+  @ if tail then [] else [ ENDLET 1 ]
+
+(* Naive: each clause is an independent test-then-bind sequence; a failed test
+   jumps to the next clause. Re-tests shared prefixes across clauses. *)
+and naive_match (cenv_m : cenv) ~tail (cases : case list) (l_end : int) : instr list =
+  let l_fail = fresh_label () in
   let case_labels = List.map (fun _ -> fresh_label ()) cases in
   let next_labels = List.tl case_labels @ [ l_fail ] in
   let case_code (c : case) (l_here : int) (l_next : int) : instr list =
@@ -199,11 +226,40 @@ and compile_match (cenv : cenv) ~tail (scrut : expr) (cases : case list) : instr
          cases
          (List.combine case_labels next_labels))
   in
-  compile cenv ~tail:false scrut
-  @ [ LET ]
-  @ cases_code
-  @ [ LABEL l_fail; MATCHFAIL; LABEL l_end ]
-  @ if tail then [] else [ ENDLET 1 ]
+  cases_code @ [ LABEL l_fail; MATCHFAIL ]
+
+(* Optimizing: build a Maranget decision tree over the whole clause matrix
+   ({!Decision_tree}) and lower it, so each occurrence is tested at most once on
+   any path. *)
+and tree_match (cenv_m : cenv) ~tail (cases : case list) (l_end : int) : instr list =
+  let tree = Decision_tree.build (List.mapi (fun i (c : case) -> c.lhs, i) cases) in
+  let rec comp (t : Decision_tree.tree) : instr list =
+    match t with
+    | Decision_tree.Fail -> [ MATCHFAIL ]
+    | Decision_tree.Leaf (action, binds) ->
+      let pushes = List.concat_map (fun (_, occ) -> push_path occ) binds in
+      let k = List.length binds in
+      let cenv_body = List.map fst binds @ cenv_m in
+      pushes
+      @ List.init k (fun _ -> LET)
+      @ compile cenv_body ~tail (List.nth cases action).rhs
+      @ if tail then [] else [ ENDLET k; JUMP l_end ]
+    | Decision_tree.Switch (occ, branches, default) ->
+      let rec do_branches = function
+        | [] ->
+          (match default with
+           | Some d -> comp d
+           | None -> [ MATCHFAIL ])
+        | (test, sub) :: rest ->
+          let l_next = fresh_label () in
+          push_path occ
+          @ [ TEST (test, l_next) ]
+          @ comp sub
+          @ (LABEL l_next :: do_branches rest)
+      in
+      do_branches branches
+  in
+  comp tree
 ;;
 
 (* ------------------------------------------------------------------ *)
