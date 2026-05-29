@@ -34,6 +34,7 @@ let add_warning (wspan : Span.t) (wmsg : string) =
 ;;
 
 let get_warnings () = List.rev !warnings
+let clear_warnings () = warnings := []
 
 (* ------------------------------------------------------------------ *)
 (* Levels *)
@@ -402,6 +403,14 @@ and infer_bindings (denv : denv) (env : Env.t) (is_rec : bool) (bs : Ast.binding
 
 (* ------------------------------------------------------------------ *)
 (* Top-level entry points *)
+
+(* Infer a top-level [let] (or [let rec]) and return the extended environment.
+   Used by the REPL/driver, which thread the environment across phrases. *)
+let infer_decl (denv : denv) (env : Env.t) (is_rec : bool) (bs : Ast.binding list) : Env.t
+  =
+  current_level := 0;
+  infer_bindings denv env is_rec bs
+;;
 
 (* Infer the principal scheme of a single (closed) expression. *)
 let infer_scheme (denv : denv) (env : Env.t) (e : Ast.expr) : scheme =

@@ -1,33 +1,35 @@
 (* MiniML CLI.
 
-   v0.1: parse a file (or stdin) and pretty-print the AST, to exercise the
-   lexer/parser/pretty-printer end to end. This grows into a full REPL +
-   type-checking + VM runner in later milestones. *)
+   - no arguments: an interactive REPL (lex -> parse -> infer -> exhaustiveness
+     -> compile -> VM for every phrase), printing the inferred type and the value;
+   - one argument: run that file as a sequence of declarations. *)
 
-let parse_channel (ic : in_channel) : Miniml.Ast.program =
-  let src = In_channel.input_all ic in
-  let lexbuf = Lexing.from_string src in
-  Miniml.Parser.program Miniml.Lexer.token lexbuf
+let rec repl (st : Miniml.Driver.state) : unit =
+  print_string "miniml> ";
+  flush stdout;
+  match In_channel.input_line stdin with
+  | None -> print_newline () (* EOF (Ctrl-D) *)
+  | Some line when String.trim line = "" -> repl st
+  | Some line ->
+    let st', out = Miniml.Driver.feed st line in
+    if out <> "" then print_endline out;
+    repl st'
 ;;
 
-let read_program () : Miniml.Ast.program =
-  match Sys.argv with
-  | [| _ |] -> parse_channel stdin
-  | [| _; file |] -> In_channel.with_open_text file parse_channel
-  | _ ->
-    prerr_endline "usage: miniml [FILE]";
-    exit 2
+let run_file (path : string) : unit =
+  let src = In_channel.with_open_text path In_channel.input_all in
+  let _, out = Miniml.Driver.feed (Miniml.Driver.initial ()) src in
+  if out <> "" then print_endline out
 ;;
 
 let () =
-  match read_program () with
-  | prog ->
-    print_string (Miniml.Pretty.program prog);
-    print_newline ()
-  | exception Miniml.Lexer.Lexing_error msg ->
-    Printf.eprintf "lex error: %s\n" msg;
-    exit 1
-  | exception Miniml.Parser.Error ->
-    prerr_endline "parse error";
-    exit 1
+  match Sys.argv with
+  | [| _ |] ->
+    print_endline
+      "MiniML REPL — type an expression or a let/type declaration; Ctrl-D to exit.";
+    repl (Miniml.Driver.initial ())
+  | [| _; file |] -> run_file file
+  | _ ->
+    prerr_endline "usage: miniml [FILE]";
+    exit 2
 ;;

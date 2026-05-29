@@ -9,5 +9,6 @@ let () =
      @ Test_exhaust.suites
      @ Test_eval.suites
      @ Test_vm.suites
-     @ Test_soundness.suites)
+     @ Test_soundness.suites
+     @ Test_driver.suites)
 ;;

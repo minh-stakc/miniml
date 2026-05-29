@@ -94,7 +94,42 @@ dune exec miniml     # start the REPL
 dune exec miniml -- examples/map.ml   # run a program
 ```
 
-<!-- A recorded REPL session is added at the v0.7 milestone. -->
+### A REPL session
+
+Each phrase is lexed, parsed, type-inferred, exhaustiveness-checked, compiled to
+bytecode, and run on the VM — and the inferred type and value are printed:
+
+```
+$ dune exec miniml
+miniml> type 'a option = None | Some of 'a
+type option defined
+miniml> let id = fun x -> x
+id : 'a -> 'a = <fun>
+miniml> (id 1, id true)
+- : int * bool = (1, true)
+miniml> let rec fact = fun n -> if n = 0 then 1 else n * fact (n - 1)
+fact : int -> int = <fun>
+miniml> fact 10
+- : int = 3628800
+
+miniml> match Some 5 with Some x -> x
+- : int = 5
+1 | match Some 5 with Some x -> x
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Warning: this pattern matching is not exhaustive; an unmatched value: None
+
+miniml> fun x -> x x
+1 | fun x -> x x
+         ^^^
+cannot construct the infinite type 'a
+
+miniml> 1 + true
+1 | 1 + true
+    ^^^^^^^^
+this expression has type int but type bool was expected
+```
+
+Runnable programs live in [`examples/`](examples/) (`dune exec miniml -- examples/lists.ml`).
 
 ## Documentation
 
@@ -121,13 +156,21 @@ The internals are documented to teach, not just to describe:
 | Reference evaluator | `v0.4` | ✅ done (differential-testing oracle) |
 | Bytecode compiler + stack VM | `v0.5` | ✅ done (proper tail calls) |
 | Property-tested soundness + CI | `v0.6` | ✅ done (1000-case qcheck) |
-| REPL + error spans + examples | `v0.7` | planned |
+| REPL + error spans + examples | `v0.7` | ✅ done |
 | Mutable refs + value restriction | `v1.0` | planned (optional) |
 
 ### Not done yet / honest limitations
 
-- (filled in as the project progresses — e.g. records, `when` guards, modules,
-  an optimizing decision-tree match compiler, an LSP, algebraic effects)
+- **No mutable references yet** (`ref`/`!`/`:=`) — the value restriction is
+  implemented and ready, but `;` sequencing and `ref` land in v1.0.
+- **`&&` / `||` are strict** (both operands evaluated), not short-circuiting —
+  a deliberate simplification kept consistent between the VM and the evaluator.
+- **Naive match compilation** — a correct test-then-bind decision *sequence*, not
+  Maranget's optimal decision *tree* (which shares tests across clauses).
+- **No `when` guards, records, modules, or strings.**
+- **Parse errors** are reported without a caret (type errors are).
+- Possible extensions: a typed bytecode, an optimizing match compiler, algebraic
+  effects (OCaml 5), and an LSP that shows inferred types in the editor.
 
 ## License
 
