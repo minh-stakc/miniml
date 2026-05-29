@@ -2,5 +2,7 @@
     [suites] value; this is the single entry point that runs them all. *)
 
 let () =
-  Alcotest.run "miniml" (Test_parser.suites @ Test_infer.suites @ Test_exhaust.suites)
+  Alcotest.run
+    "miniml"
+    (Test_parser.suites @ Test_infer.suites @ Test_exhaust.suites @ Test_eval.suites)
 ;;
