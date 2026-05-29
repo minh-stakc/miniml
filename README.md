@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/minh-stakc/miniml/actions/workflows/ci.yml/badge.svg)](https://github.com/minh-stakc/miniml/actions/workflows/ci.yml)
 ![OCaml](https://img.shields.io/badge/OCaml-5.2-orange)
-![tests](https://img.shields.io/badge/tests-146%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-184%20passing-brightgreen)
 ![parser conflicts](https://img.shields.io/badge/menhir%20conflicts-0-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
@@ -15,9 +15,11 @@ MiniML infers every type with **zero annotations**, rejects ill-typed programs
 soundness is **property-tested** (progress + preservation) and cross-checked
 against a reference interpreter.
 
-**By the numbers:** ~2,500 lines of OCaml across 16 modules · 146 tests (unit +
-differential + 1,000-case property-based) · a 34-instruction VM with proper tail
-calls · 0 parser conflicts · 9 tagged releases. Full write-up in
+**By the numbers:** ~3,400 lines of OCaml across 15 library modules (each with an
+`.mli` interface) plus an ocamllex lexer and a menhir parser · 184 tests (unit,
+differential, 1,500-case property-based, and CLI golden snapshots) · a
+31-instruction stack VM with proper tail calls · 0 parser conflicts · 10 tagged
+releases. Design rationale in [`DESIGN.md`](DESIGN.md); full write-up in
 [`REPORT.md`](REPORT.md).
 
 ```
@@ -84,8 +86,11 @@ let rec sum_tree = fun t ->
 - first-class **curried functions** + closures
 - `int`, `bool`, `unit`, tuples, lists (`[]`, `::`, `[a; b; c]`)
 - **user-defined algebraic data types** (`type 'a option = None | Some of 'a`)
+- **records with row-polymorphic inference**: `{ x = 1; y = true }`, field access
+  `r.x`, and open rows (`{ x : 'a; .. }`) so an accessor works on any matching record
 - **pattern matching** (wildcard / variable / literal / constructor / tuple /
-  cons, nested) with exhaustiveness + redundancy warnings
+  cons, nested) with exhaustiveness + redundancy warnings, compiled by an
+  optimizing **decision tree** that tests each sub-value at most once per path
 - **let-polymorphism** (with the value restriction)
 - **mutable references** (`ref` / `!` / `:=`) and `;` sequencing
 - arithmetic, comparison, and boolean operators
@@ -121,6 +126,11 @@ fact : int -> int = <fun>
 miniml> fact 10
 - : int = 3628800
 
+miniml> let getx = fun r -> r.x
+getx : { x : 'a; .. } -> 'a = <fun>
+miniml> (getx { x = 1; y = true }, getx { x = 9 })
+- : int * int = (1, 9)
+
 miniml> match Some 5 with Some x -> x
 - : int = 5
 1 | match Some 5 with Some x -> x
@@ -153,6 +163,10 @@ The internals are documented to teach, not just to describe:
 | [`docs/05-bytecode-vm.md`](docs/05-bytecode-vm.md) | the instruction set, closures, recursive closures, proper tail calls |
 | [`docs/06-testing.md`](docs/06-testing.md) | unit / differential / type-directed property testing |
 | [`docs/07-pitfalls.md`](docs/07-pitfalls.md) | the correctness traps and the symptom each bug produces |
+| [`docs/08-refs-value-restriction.md`](docs/08-refs-value-restriction.md) | mutable references and why the value restriction is needed |
+| [`docs/09-decision-trees.md`](docs/09-decision-trees.md) | ⭐ Maranget decision-tree match compilation, and the cost it saves |
+| [`docs/10-records-rows.md`](docs/10-records-rows.md) | ⭐ row-polymorphic records on top of the existing inferencer |
+| [`DESIGN.md`](DESIGN.md) | engineering journal: decisions, rejected alternatives, bugs that taught me something |
 | [`STUDY-GUIDE.md`](STUDY-GUIDE.md) | per-topic key ideas, likely questions, and "make it yours" exercises |
 
 ## Project status
@@ -167,23 +181,24 @@ The internals are documented to teach, not just to describe:
 | Property-tested soundness + CI | `v0.6` | ✅ done (1000-case qcheck) |
 | REPL + error spans + examples | `v0.7` | ✅ done |
 | Mutable refs + value restriction | `v1.0` | ✅ done |
+| Decision-tree match compiler · row-polymorphic records · `.mli` interfaces · cram snapshots | `v1.1` | ✅ done |
 
 ### Not done yet / honest limitations
 
-- **`&&` / `||` are strict** (both operands evaluated), not short-circuiting —
-  a deliberate simplification kept consistent between the VM and the evaluator.
-- **Naive match compilation** — a correct test-then-bind decision *sequence*, not
-  Maranget's optimal decision *tree* (which shares tests across clauses).
-- **No `when` guards, records, modules, or strings.**
+- **`&&` / `||` are strict** (both operands evaluated), not short-circuiting. This
+  is a deliberate simplification kept consistent between the VM and the evaluator.
+- **No `when` guards, or-patterns, modules, or strings.** Records exist, but only
+  with construction and field access (no functional update or record patterns).
 - **Parse errors** are reported without a caret (type errors are).
-- **`=` on functions returns `false`** rather than raising as OCaml does —
-  closures are treated as opaque/never-equal.
+- **`=` on functions returns `false`** rather than raising as OCaml does;
+  closures are treated as opaque and never equal.
 - **The reference evaluator** (the differential-testing oracle) uses host-stack
   recursion, so it can stack-overflow on extremely deep *non-tail* recursion
   where the iterative bytecode VM still succeeds; differential tests use bounded
   programs.
-- Possible extensions: a typed bytecode, an optimizing match compiler, algebraic
-  effects (OCaml 5), and an LSP that shows inferred types in the editor.
+- Possible extensions, with rationale, are listed in [`DESIGN.md`](DESIGN.md):
+  an array-backed VM environment, `when` guards and or-patterns, a bytecode
+  verifier, and an editor integration that surfaces inferred types.
 
 ## License
 
