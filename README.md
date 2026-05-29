@@ -1,5 +1,11 @@
 # MiniML
 
+[![CI](https://github.com/minh-stakc/miniml/actions/workflows/ci.yml/badge.svg)](https://github.com/minh-stakc/miniml/actions/workflows/ci.yml)
+![OCaml](https://img.shields.io/badge/OCaml-5.2-orange)
+![tests](https://img.shields.io/badge/tests-146%20passing-brightgreen)
+![parser conflicts](https://img.shields.io/badge/menhir%20conflicts-0-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 A small, statically-typed **ML-family language implemented in OCaml** — with full
 **Hindley-Milner type inference**, pattern-match **exhaustiveness checking**, a
 **bytecode compiler**, and a **stack VM** that executes the bytecode.
@@ -9,8 +15,10 @@ MiniML infers every type with **zero annotations**, rejects ill-typed programs
 soundness is **property-tested** (progress + preservation) and cross-checked
 against a reference interpreter.
 
-> Status: in active development. See [Project status](#project-status) for what
-> is implemented vs. planned, and the per-milestone git tags (`v0.1` …).
+**By the numbers:** ~2,500 lines of OCaml across 16 modules · 146 tests (unit +
+differential + 1,000-case property-based) · a 34-instruction VM with proper tail
+calls · 0 parser conflicts · 9 tagged releases. Full write-up in
+[`REPORT.md`](REPORT.md).
 
 ```
 source ──lex──▶ tokens ──parse──▶ surface AST
