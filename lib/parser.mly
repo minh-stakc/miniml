@@ -51,6 +51,7 @@ let mk_app f x loc =
 %token ARROW COLONCOLON LPAREN RPAREN LBRACKET RBRACKET COMMA SEMI PIPE
 %token UNDERSCORE EQUAL
 %token PLUS MINUS STAR SLASH LT LE GT GE NEQ ANDAND OROR
+%token REF BANG COLONEQ
 %token EOF
 
 (* Precedence ladder, lowest to highest. [no_pipe] is a pseudo-token used to
@@ -58,6 +59,7 @@ let mk_app f x loc =
    match). *)
 %nonassoc no_pipe
 %left PIPE
+%right COLONEQ
 %right OROR
 %right ANDAND
 %nonassoc EQUAL NEQ LT LE GT GE
@@ -76,7 +78,14 @@ program:
   | items = list(top_item) EOF { items }
 
 expr_main:
-  | e = expr EOF { e }
+  | e = seq_expr EOF { e }
+
+(* Sequencing is allowed at top level and inside parentheses (kept out of bare
+   let/fun bodies so the list separator `;` stays unambiguous — write
+   `let r = ref 0 in (r := 1; !r)`). *)
+seq_expr:
+  | e = expr { e }
+  | e1 = expr SEMI e2 = seq_expr { ESeq (e1, e2, mkspan $loc) }
 
 top_item:
   | t = type_decl
@@ -161,6 +170,7 @@ op_expr:
   | e1 = op_expr ANDAND e2 = op_expr { EBinop (And, e1, e2, mkspan $loc) }
   | e1 = op_expr OROR e2 = op_expr { EBinop (Or, e1, e2, mkspan $loc) }
   | e1 = op_expr COLONCOLON e2 = op_expr { ECons (e1, e2, mkspan $loc) }
+  | e1 = op_expr COLONEQ e2 = op_expr { EAssign (e1, e2, mkspan $loc) }
   | MINUS e = op_expr %prec UMINUS { EUnop (Neg, e, mkspan $loc) }
   | NOT e = op_expr { EUnop (Not, e, mkspan $loc) }
 
@@ -174,10 +184,13 @@ simple_expr:
   | FALSE { ELit (LBool false, mkspan $loc) }
   | x = IDENT { EVar (x, mkspan $loc) }
   | c = UIDENT { ECtor (c, None, mkspan $loc) }
+  | BANG e = simple_expr { EDeref (e, mkspan $loc) }
+  | REF e = simple_expr { ERef (e, mkspan $loc) }
   | LPAREN RPAREN { ELit (LUnit, mkspan $loc) }
   | LPAREN e = expr RPAREN { e }
   | LPAREN e = expr COMMA es = separated_nonempty_list(COMMA, expr) RPAREN
       { ETuple (e :: es, mkspan $loc) }
+  | LPAREN e = expr SEMI s = seq_expr RPAREN { ESeq (e, s, mkspan $loc) }
   | LBRACKET RBRACKET { ENil (mkspan $loc) }
   | LBRACKET es = separated_nonempty_list(SEMI, expr) RBRACKET { mk_list es $loc }
 

@@ -56,7 +56,10 @@ type expr =
   | EMatch of expr * case list * Span.t
   | EBinop of binop * expr * expr * Span.t
   | EUnop of unop * expr * Span.t
-  | ESeq of expr * expr * Span.t (* [e1; e2] — sequencing (useful with refs) *)
+  | ESeq of expr * expr * Span.t (* [e1; e2] — sequencing *)
+  | ERef of expr * Span.t (* [ref e] *)
+  | EDeref of expr * Span.t (* [!e] *)
+  | EAssign of expr * expr * Span.t (* [e1 := e2] *)
 
 and binding =
   { name : string
@@ -120,7 +123,10 @@ let span_of_expr : expr -> Span.t = function
   | EMatch (_, _, s)
   | EBinop (_, _, _, s)
   | EUnop (_, _, s)
-  | ESeq (_, _, s) -> s
+  | ESeq (_, _, s)
+  | ERef (_, s)
+  | EDeref (_, s)
+  | EAssign (_, _, s) -> s
 ;;
 
 let string_of_binop : binop -> string = function

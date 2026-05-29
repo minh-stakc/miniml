@@ -161,6 +161,20 @@ let run (code : code) : Value.t =
        | VBool true -> ()
        | _ -> raise (Type_trap "if condition is not a boolean"))
     | POP -> ignore (pop ())
+    | MKREF ->
+      let v = pop () in
+      push (VRef (ref v))
+    | DEREF ->
+      (match pop () with
+       | VRef cell -> push !cell
+       | _ -> raise (Type_trap "dereference of a non-reference"))
+    | ASSIGN ->
+      let v = pop () in
+      (match pop () with
+       | VRef cell ->
+         cell := v;
+         push VUnit
+       | _ -> raise (Type_trap "assignment to a non-reference"))
     | MATCHFAIL -> raise (Type_trap "match failure (non-exhaustive)")
     | LABEL _ -> () (* removed by the assembler; defensive no-op *)
     | STOP ->

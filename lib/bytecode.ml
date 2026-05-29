@@ -43,6 +43,9 @@ type instr =
   | JUMP of int
   | JUMPIFNOT of int (* pop a bool; jump if false *)
   | POP (* discard the top of the stack *)
+  | MKREF (* pop a value, push a fresh reference cell holding it *)
+  | DEREF (* pop a reference, push its contents *)
+  | ASSIGN (* pop a value then a reference, store the value, push unit *)
   | MATCHFAIL (* runtime match failure (should be unreachable for exhaustive matches) *)
   | LABEL of int (* pseudo-instruction: a jump target, removed by the assembler *)
   | STOP (* halt; the result is the top of the stack *)

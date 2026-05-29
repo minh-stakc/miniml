@@ -105,6 +105,7 @@ let rec compile (cenv : cenv) ~(tail : bool) (e : expr) : instr list =
   | ELet (false, bs, body, _) -> compile_let_nonrec cenv ~tail bs body
   | ELet (true, bs, body, _) -> compile_let_rec cenv ~tail bs body
   | EMatch (scrut, cases, _) -> compile_match cenv ~tail scrut cases
+  | ESeq (a, b, _) -> compile cenv ~tail:false a @ [ POP ] @ compile cenv ~tail b
   | _ -> ret ~tail (compile_value cenv e)
 
 and ret ~tail (code : instr list) : instr list = if tail then code @ [ RETURN ] else code
@@ -132,8 +133,10 @@ and compile_value (cenv : cenv) (e : expr) : instr list =
   | EBinop (op, a, b, _) -> cv a @ cv b @ [ PRIM op ]
   | EUnop (Neg, a, _) -> cv a @ [ NEG ]
   | EUnop (Not, a, _) -> cv a @ [ NOT ]
-  | ESeq (a, b, _) -> cv a @ [ POP ] @ cv b
-  | (EApp _ | EIf _ | ELet _ | EMatch _) as e -> compile cenv ~tail:false e
+  | ERef (e, _) -> cv e @ [ MKREF ]
+  | EDeref (e, _) -> cv e @ [ DEREF ]
+  | EAssign (e1, e2, _) -> cv e1 @ cv e2 @ [ ASSIGN ]
+  | (EApp _ | EIf _ | ELet _ | EMatch _ | ESeq _) as e -> compile cenv ~tail:false e
 
 and compile_let_nonrec (cenv : cenv) ~tail (bs : binding list) (body : expr) : instr list =
   let n = List.length bs in

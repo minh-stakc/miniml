@@ -70,6 +70,17 @@ let rec eval (env : env) (e : expr) : Value.t =
   | ESeq (a, b, _) ->
     ignore (eval env a);
     eval env b
+  | ERef (e, _) -> VRef (ref (eval env e))
+  | EDeref (e, _) ->
+    (match eval env e with
+     | VRef cell -> !cell
+     | _ -> raise (Runtime_error "dereference of a non-reference"))
+  | EAssign (e1, e2, _) ->
+    (match eval env e1 with
+     | VRef cell ->
+       cell := eval env e2;
+       VUnit
+     | _ -> raise (Runtime_error "assignment to a non-reference"))
 
 and eval_binop (op : binop) (a : Value.t) (b : Value.t) : Value.t =
   let int2 f =

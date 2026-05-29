@@ -17,6 +17,7 @@ type t =
   | VData of string * t option (* constructor name + optional argument *)
   | VClosEval of eval_closure (* a closure produced by the tree-walking evaluator *)
   | VClosVM of vm_closure (* a closure produced by the bytecode VM (v0.5) *)
+  | VRef of t ref (* a mutable reference cell (v1.0) *)
 
 and eval_closure =
   { param : string
@@ -45,6 +46,7 @@ let rec equal (a : t) (b : t) : bool =
       | None, None -> true
       | Some x, Some y -> equal x y
       | _ -> false)
+  | VRef a, VRef b -> equal !a !b (* structural, like OCaml's [=] on refs *)
   | _ -> false
 ;;
 
@@ -58,10 +60,11 @@ let rec to_string (v : t) : string =
   | VData (c, None) -> c
   | VData (c, Some v) -> c ^ " " ^ to_string_atom v
   | VClosEval _ | VClosVM _ -> "<fun>"
+  | VRef cell -> "ref " ^ to_string_atom !cell
 
 and to_string_atom (v : t) : string =
   match v with
   | VInt n when n < 0 -> "(" ^ string_of_int n ^ ")"
-  | VData (_, Some _) -> "(" ^ to_string v ^ ")"
+  | VData (_, Some _) | VRef _ -> "(" ^ to_string v ^ ")"
   | _ -> to_string v
 ;;

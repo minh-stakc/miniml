@@ -15,7 +15,8 @@ let () =
     (fun (k, v) -> Hashtbl.replace keyword_table k v)
     [ "let", LET; "rec", REC; "and", AND; "in", IN; "fun", FUN
     ; "if", IF; "then", THEN; "else", ELSE; "match", MATCH; "with", WITH
-    ; "type", TYPE; "of", OF; "true", TRUE; "false", FALSE; "not", NOT ]
+    ; "type", TYPE; "of", OF; "true", TRUE; "false", FALSE; "not", NOT
+    ; "ref", REF ]
 }
 
 let digit   = ['0'-'9']
@@ -35,7 +36,9 @@ rule token = parse
   | int as s      { try INT (int_of_string s)
                     with _ -> raise (Lexing_error ("integer literal out of range: " ^ s)) }
   | "->"          { ARROW }
+  | ":="          { COLONEQ }
   | "::"          { COLONCOLON }
+  | "!"           { BANG }
   | "<="          { LE }
   | ">="          { GE }
   | "<>"          { NEQ }

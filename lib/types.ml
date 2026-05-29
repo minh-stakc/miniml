@@ -72,6 +72,7 @@ let t_int = TCon ("int", [])
 let t_bool = TCon ("bool", [])
 let t_unit = TCon ("unit", [])
 let t_list (elt : typ) : typ = TCon ("list", [ elt ])
+let t_ref (t : typ) : typ = TCon ("ref", [ t ])
 
 (* ------------------------------------------------------------------ *)
 (* Declaration environment: user-defined algebraic data types.

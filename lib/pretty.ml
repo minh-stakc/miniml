@@ -90,6 +90,9 @@ and expr_prec (e : expr) : int * string =
     let case (c : case) = "| " ^ pat_str c.lhs ^ " -> " ^ expr_p 0 c.rhs in
     0, "match " ^ expr_p 1 scrut ^ " with " ^ String.concat " " (List.map case cases)
   | ESeq (a, b, _) -> 0, expr_p 1 a ^ "; " ^ expr_p 0 b
+  | EAssign (a, b, _) -> 1, expr_p 2 a ^ " := " ^ expr_p 1 b
+  | ERef (e, _) -> 8, "ref " ^ expr_p 9 e
+  | EDeref (e, _) -> 9, "!" ^ expr_p 9 e
 
 and binding_str (b : binding) : string =
   let params = String.concat "" (List.map (fun p -> " " ^ p) b.params) in

@@ -333,10 +333,21 @@ let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
   | Ast.EUnop (Ast.Not, a, sp) ->
     unify ~span:sp (infer denv env a) t_bool;
     t_bool
-  | Ast.ESeq (a, b, _) ->
-    (* sequencing: the first expression's value is discarded *)
-    ignore (infer denv env a);
+  | Ast.ESeq (a, b, sp) ->
+    (* sequencing: the left expression must have type unit *)
+    unify ~span:sp (infer denv env a) t_unit;
     infer denv env b
+  | Ast.ERef (e, _) -> t_ref (infer denv env e)
+  | Ast.EDeref (e, sp) ->
+    let t = infer denv env e in
+    let a = new_var !current_level in
+    unify ~span:sp t (t_ref a);
+    a
+  | Ast.EAssign (e1, e2, sp) ->
+    let t1 = infer denv env e1 in
+    let t2 = infer denv env e2 in
+    unify ~span:sp t1 (t_ref t2);
+    t_unit
 
 and infer_ctor denv env (c : string) (arg : Ast.expr option) (sp : Span.t) : typ =
   match Hashtbl.find_opt denv.ctors c with

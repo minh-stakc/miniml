@@ -79,7 +79,8 @@ let rec sum_tree = fun t ->
 - **pattern matching** (wildcard / variable / literal / constructor / tuple /
   cons, nested) with exhaustiveness + redundancy warnings
 - **let-polymorphism** (with the value restriction)
-- arithmetic, comparison, and boolean operators; a `print_int` primitive
+- **mutable references** (`ref` / `!` / `:=`) and `;` sequencing
+- arithmetic, comparison, and boolean operators
 
 ## Build & run
 
@@ -157,12 +158,10 @@ The internals are documented to teach, not just to describe:
 | Bytecode compiler + stack VM | `v0.5` | ✅ done (proper tail calls) |
 | Property-tested soundness + CI | `v0.6` | ✅ done (1000-case qcheck) |
 | REPL + error spans + examples | `v0.7` | ✅ done |
-| Mutable refs + value restriction | `v1.0` | planned (optional) |
+| Mutable refs + value restriction | `v1.0` | ✅ done |
 
 ### Not done yet / honest limitations
 
-- **No mutable references yet** (`ref`/`!`/`:=`) — the value restriction is
-  implemented and ready, but `;` sequencing and `ref` land in v1.0.
 - **`&&` / `||` are strict** (both operands evaluated), not short-circuiting —
   a deliberate simplification kept consistent between the VM and the evaluator.
 - **Naive match compilation** — a correct test-then-bind decision *sequence*, not
