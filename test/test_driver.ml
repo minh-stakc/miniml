@@ -52,5 +52,33 @@ let suites =
           in
           Alcotest.(check bool) "warns" true (contains "not exhaustive" (List.nth o 1)))
       ] )
+  ; (* robustness: runtime/lex errors must be reported, never crash the REPL
+       (found by the adversarial review) *)
+    ( "driver-robustness"
+    , [ Alcotest.test_case "div_by_zero_graceful" `Quick (fun () ->
+          Alcotest.(check bool)
+            "reports"
+            true
+            (contains "division by zero" (List.hd (run_session [ "10 / 0" ]))))
+      ; Alcotest.test_case "runtime_match_failure_graceful" `Quick (fun () ->
+          Alcotest.(check bool)
+            "reports"
+            true
+            (contains
+               "match failure"
+               (List.hd (run_session [ "(fun xs -> match xs with h :: _ -> h) []" ]))))
+      ; Alcotest.test_case "big_int_graceful" `Quick (fun () ->
+          Alcotest.(check bool)
+            "reports"
+            true
+            (contains
+               "out of range"
+               (List.hd (run_session [ "99999999999999999999999999" ]))))
+      ; Alcotest.test_case "let_underscore" `Quick (fun () ->
+          Alcotest.(check string)
+            "_"
+            "_ : int = 3"
+            (List.hd (run_session [ "let _ = 1 + 2" ])))
+      ] )
   ]
 ;;

@@ -169,6 +169,12 @@ The internals are documented to teach, not just to describe:
   Maranget's optimal decision *tree* (which shares tests across clauses).
 - **No `when` guards, records, modules, or strings.**
 - **Parse errors** are reported without a caret (type errors are).
+- **`=` on functions returns `false`** rather than raising as OCaml does —
+  closures are treated as opaque/never-equal.
+- **The reference evaluator** (the differential-testing oracle) uses host-stack
+  recursion, so it can stack-overflow on extremely deep *non-tail* recursion
+  where the iterative bytecode VM still succeeds; differential tests use bounded
+  programs.
 - Possible extensions: a typed bytecode, an optimizing match compiler, algebraic
   effects (OCaml 5), and an LSP that shows inferred types in the editor.
 

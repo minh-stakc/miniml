@@ -25,6 +25,11 @@ strong evidence both are right.
 It also asserts **proper tail calls**: `loop 100000 0` (a tail-recursive sum)
 returns `5000050000` while `Vm.max_frame_depth` stays ≤ 5 — constant space.
 
+(One asymmetry: the reference evaluator recurses on OCaml's own stack, so it can
+overflow on *extremely deep non-tail* recursion where the iterative VM still
+succeeds. The differential corpus uses bounded programs; this makes the VM the
+*more* robust of the two, not less.)
+
 ## 3. Property-tested soundness (`test_soundness.ml`)
 
 A **type-directed generator** builds expressions that are well-typed *by

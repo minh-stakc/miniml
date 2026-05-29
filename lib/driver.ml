@@ -98,5 +98,8 @@ let feed (st : state) (input : string) : state * string =
      with
      | st', lines -> st', String.concat "\n" (lines @ warning_lines ~src:input)
      | exception Infer.Type_error (sp, msg) -> st, Errors.format_at ~src:input sp msg
-     | exception Infer.Occurs_check (sp, msg) -> st, Errors.format_at ~src:input sp msg)
+     | exception Infer.Occurs_check (sp, msg) -> st, Errors.format_at ~src:input sp msg
+     | exception Eval.Runtime_error msg -> st, "Runtime error: " ^ msg
+     | exception Vm.Type_trap msg -> st, "Runtime error: " ^ msg
+     | exception Failure msg -> st, "Error: " ^ msg)
 ;;

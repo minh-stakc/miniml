@@ -32,7 +32,8 @@ rule token = parse
   | white         { token lexbuf }
   | newline       { Lexing.new_line lexbuf; token lexbuf }
   | "(*"          { comment 1 lexbuf; token lexbuf }
-  | int as s      { INT (int_of_string s) }
+  | int as s      { try INT (int_of_string s)
+                    with _ -> raise (Lexing_error ("integer literal out of range: " ^ s)) }
   | "->"          { ARROW }
   | "::"          { COLONCOLON }
   | "<="          { LE }

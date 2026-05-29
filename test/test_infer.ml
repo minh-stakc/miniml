@@ -87,6 +87,18 @@ let adversarial =
       "let pair = fun x -> (x, x) in pair (fun z -> z)"
       "ok: ('a -> 'a) * ('a -> 'a)"
   ; case "unbound" "y" "type_error"
+  ; (* found by the adversarial review: linearity, let-rec, value restriction *)
+    case "nonlinear_pattern" "match (1, true) with (x, x) -> x" "type_error"
+  ; case "letrec_non_function" "let rec x = x + 1 in x" "type_error"
+  ; case
+      "value_restriction"
+      "let b = (fun f -> f) (fun y -> y) in let g = b in (g 1, g true)"
+      "type_error"
+  ; case
+      "value_restriction_ok_for_values"
+      "let b = fun y -> y in (b 1, b true)"
+      "ok: int * bool"
+  ; case "negative_int_pattern" "match 0 - 1 with -1 -> 100 | _ -> 0" "ok: int"
   ]
 ;;
 

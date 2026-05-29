@@ -144,6 +144,27 @@ let generalize (t : typ) : scheme =
    and for the value restriction). *)
 let dont_generalize (t : typ) : scheme = { qvars = []; body = t }
 
+(* Lower the levels of a type's unbound variables to the current level. Used on
+   the non-value [let] path: a variable we decline to generalize (value
+   restriction) must not be left at a deeper level, where an enclosing [let]
+   could wrongly generalize it later. *)
+let rec demote (t : typ) : unit =
+  match repr t with
+  | TVar ({ contents = Unbound (id, lvl) } as r) ->
+    if lvl > !current_level then r := Unbound (id, !current_level)
+  | TVar { contents = Link _ } -> assert false
+  | TArrow (a, b) ->
+    demote a;
+    demote b
+  | TTuple ts | TCon (_, ts) -> List.iter demote ts
+;;
+
+(* The first element that occurs more than once (for pattern-linearity checks). *)
+let rec first_dup = function
+  | [] -> None
+  | x :: r -> if List.mem x r then Some x else first_dup r
+;;
+
 (* Replace the scheme's quantified variables with fresh variables at the current
    level. Non-quantified variables in the body are shared (returned as-is), so
    the scheme stays connected to the rest of the type graph. *)
@@ -269,6 +290,14 @@ let rec infer (denv : denv) (env : Env.t) (e : Ast.expr) : typ =
     List.iter
       (fun (case : Ast.case) ->
          let tpat, binds = infer_pat denv case.lhs in
+         (match first_dup (List.map fst binds) with
+          | Some x ->
+            raise
+              (Type_error
+                 ( Ast.span_of_pat case.lhs
+                 , Printf.sprintf "variable %s is bound several times in this pattern" x
+                 ))
+          | None -> ());
          unify ~span:(Ast.span_of_pat case.lhs) tpat tscrut;
          let env' =
            List.fold_left (fun g (n, t) -> Env.add n (dont_generalize t) g) env binds
@@ -376,7 +405,15 @@ and infer_bindings (denv : denv) (env : Env.t) (is_rec : bool) (bs : Ast.binding
            let rhs = lambdas b.params b.body in
            let t = infer denv env rhs in
            leave_level ();
-           let s = if is_value rhs then generalize t else dont_generalize t in
+           let s =
+             if is_value rhs
+             then generalize t
+             else (
+               (* value restriction: keep it monomorphic, and demote its levels
+                  so it cannot be generalized by an enclosing let either. *)
+               demote t;
+               dont_generalize t)
+           in
            b.name, s)
         bs
     in
@@ -386,6 +423,17 @@ and infer_bindings (denv : denv) (env : Env.t) (is_rec : bool) (bs : Ast.binding
        right-hand sides against those, then generalize. Keeping the recursive
        names monomorphic during elaboration is what forbids polymorphic
        recursion (undecidable in HM). *)
+    (* The runtime ties the knot only for function closures, so a recursive
+       binding must be a syntactic function (as in OCaml). Rejecting this here
+       turns a would-be runtime crash into a clean type error. *)
+    List.iter
+      (fun (b : Ast.binding) ->
+         match lambdas b.params b.body with
+         | Ast.EFun _ -> ()
+         | _ ->
+           raise
+             (Type_error (b.bspan, "the right-hand side of 'let rec' must be a function")))
+      bs;
     enter_level ();
     let recvars = List.map (fun (b : Ast.binding) -> b.name, new_var !current_level) bs in
     let env_rec =

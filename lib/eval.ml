@@ -54,7 +54,11 @@ let rec eval (env : env) (e : expr) : Value.t =
   | ECtor (c, None, _) -> VData (c, None)
   | ECtor (c, Some e, _) -> VData (c, Some (eval env e))
   | EMatch (scrut, cases, _) -> eval_match env (eval env scrut) cases
-  | EBinop (op, a, b, _) -> eval_binop op (eval env a) (eval env b)
+  | EBinop (op, a, b, _) ->
+    (* left-to-right, to match the VM (which pushes [a] then [b]) *)
+    let va = eval env a in
+    let vb = eval env b in
+    eval_binop op va vb
   | EUnop (Neg, a, _) ->
     (match eval env a with
      | VInt n -> VInt (-n)

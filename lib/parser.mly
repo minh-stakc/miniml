@@ -84,8 +84,12 @@ top_item:
   | LET r = boption(REC) bs = separated_nonempty_list(AND, binding)
       { ILet (r, bs, mkspan $loc) }
 
+bind_name:
+  | x = IDENT { x }
+  | UNDERSCORE { "_" } (* allow `let _ = e` *)
+
 binding:
-  | name = IDENT params = list(IDENT) EQUAL body = expr
+  | name = bind_name params = list(IDENT) EQUAL body = expr
       { { name; params; body; bspan = mkspan $loc } }
 
 (* ------------------------------------------------------------------ *)
@@ -210,6 +214,7 @@ atom_pattern:
   | UNDERSCORE { PWild (mkspan $loc) }
   | x = IDENT { PVar (x, mkspan $loc) }
   | i = INT { PLit (LInt i, mkspan $loc) }
+  | MINUS i = INT { PLit (LInt (-i), mkspan $loc) } (* negative integer pattern *)
   | TRUE { PLit (LBool true, mkspan $loc) }
   | FALSE { PLit (LBool false, mkspan $loc) }
   | c = UIDENT { PCtor (c, None, mkspan $loc) }
